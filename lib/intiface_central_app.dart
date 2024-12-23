@@ -299,7 +299,7 @@ class IntifaceCentralApp extends StatelessWidget with WindowListener {
       await api!.crashReporting(sentryApiKey: const String.fromEnvironment('SENTRY_DSN'));
     }
 
-    var discordBloc = DiscordBloc();
+    var discordBloc = const bool.hasEnvironment('DISCORD_CLIENT_ID') ? DiscordBloc() : null;
 
     engineControlBloc.stream.listen((state) async {
       if (state is ProviderLogMessageState) {
@@ -321,13 +321,13 @@ class IntifaceCentralApp extends StatelessWidget with WindowListener {
       }
       if (state is EngineServerCreatedState) {
         deviceControlBloc.add(DeviceManagerEngineStartedEvent());
-        if (isDesktop() && configCubit.useDiscordRichPresence) {
+        if (discordBloc != null && isDesktop() && configCubit.useDiscordRichPresence) {
           discordBloc.add(DiscordEngineStartedEvent());
         }
       }
       if (state is EngineStoppedState) {
         deviceControlBloc.add(DeviceManagerEngineStoppedEvent());
-        if (isDesktop() && configCubit.useDiscordRichPresence) {
+        if (discordBloc != null && isDesktop() && configCubit.useDiscordRichPresence) {
           discordBloc.add(DiscordEngineStoppedEvent());
         }
       }
@@ -339,7 +339,7 @@ class IntifaceCentralApp extends StatelessWidget with WindowListener {
 
     if (isDesktop()) {
       deviceControlBloc.stream.listen((state) async {
-        if (!configCubit.useDiscordRichPresence) return;
+        if (!configCubit.useDiscordRichPresence || discordBloc == null) return;
 
         if (state is DeviceManagerDeviceOnlineState) {
           discordBloc.add(DiscordDeviceAddedEvent((state).device));
@@ -387,7 +387,7 @@ class IntifaceCentralApp extends StatelessWidget with WindowListener {
       BlocProvider(create: (context) => userConfigCubit),
       BlocProvider(create: (context) => guiSettingsCubit),
       // Discord RPC won't work on mobile
-      if (isDesktop()) BlocProvider(create: (context) => discordBloc), 
+      if (isDesktop() && discordBloc != null) BlocProvider(create: (context) => discordBloc), 
     ], child: const IntifaceCentralView());
   }
 
